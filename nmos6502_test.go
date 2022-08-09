@@ -14,7 +14,7 @@ func TestNMOS6502(t *testing.T) {
 }
 
 // To execute test suites from https://github.com/Klaus2m5/6502_65C02_functional_tests
-func executeSuite(t *testing.T, s *State, stepAddress uint16, steps uint8, showStep bool, traceCPUStep uint8) {
+func executeSuite(t *testing.T, s *State, stepAddress uint32, steps uint8, showStep bool, traceCPUStep uint8) {
 	s.reg.setPC(0x0400)
 	currentStep := uint8(255)
 	for {

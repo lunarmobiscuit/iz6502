@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/ivanizag/iz6502"
+	"github.com/lunarmobiscuit/iz6502"
 )
 
 func main() {

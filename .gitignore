@@ -1,2 +1,4 @@
 .vscode
 examples/simplest/simplest
+.DS_Store
+test.out

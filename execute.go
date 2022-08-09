@@ -24,6 +24,10 @@ type State struct {
 	mem    Memory
 	cycles uint64
 
+	prefixCode	bool
+	abWidth 	uint8
+	abMaxWidth 	uint8
+
 	extraCycleCrossingBoundaries bool
 	extraCycleBranchTaken        bool
 	extraCycleBCD                bool
@@ -33,15 +37,20 @@ type State struct {
 }
 
 const (
-	vectorNMI   uint16 = 0xfffa
-	vectorReset uint16 = 0xfffc
-	vectorBreak uint16 = 0xfffe
+	vectorNMI   uint32 = 0xfffa
+	vectorReset uint32 = 0xfffc
+	vectorBreak uint32 = 0xfffe
+
+	vector24NMI   uint32 = 0xfffff7
+	vector24Reset uint32 = 0xfffffa
+	vector24Break uint32 = 0xfffffd
 )
 
 type opcode struct {
 	name        string
 	bytes       uint16
 	cycles      int
+	isPrefix	bool
 	addressMode int
 	action      opFunc
 }
@@ -54,6 +63,12 @@ func (s *State) executeLine(line []uint8) {
 		panic(fmt.Sprintf("Unknown opcode 0x%02x\n", line[0]))
 	}
 	opcode.action(s, line, opcode)
+
+	// 24T8 if the previous instruction is not a prefix code, switch back to 16/8 mode
+	s.prefixCode = opcode.isPrefix
+	if opcode.isPrefix == false {
+		s.abWidth = AB16;
+	}
 }
 
 // ExecuteInstruction transforms the state given after a single instruction is executed.
@@ -72,12 +87,17 @@ func (s *State) ExecuteInstruction() {
 	for i := uint16(0); i < opcode.bytes; i++ {
 		s.lineCache[i] = s.mem.PeekCode(pc)
 		pc++
+
+		// 24T8 BACKWARD COMPATIBILITY - roll around the PC from $FFFF to $0000 if in 16-bit address mode
+		if (s.abWidth == AB16) && (pc == 0x010000) {
+			pc = 0x000000;
+		}
 	}
 	s.reg.setPC(pc)
 
 	if s.trace {
-		//fmt.Printf("%#04x %#02x\n", pc-opcode.bytes, opcodeID)
-		fmt.Printf("%#04x %-13s: ", pc-opcode.bytes, lineString(s.lineCache, opcode))
+		//fmt.Printf("%#06x %#02x\n", pc-uint32(opcode.bytes), opcodeID)
+		fmt.Printf("%#06x %-13s: ", pc-uint32(opcode.bytes), lineString(s.lineCache, opcode))
 	}
 	opcode.action(s, s.lineCache, opcode)
 	s.cycles += uint64(opcode.cycles)
@@ -97,13 +117,23 @@ func (s *State) ExecuteInstruction() {
 	}
 
 	if s.trace {
-		fmt.Printf("%v, [%02x]\n", s.reg, s.lineCache[0:opcode.bytes])
+		fmt.Printf("%v, [%02x] <w%x>\n", s.reg, s.lineCache[0:opcode.bytes], s.abWidth)
 	}
 }
 
-// Reset resets the processor. Moves the program counter to the vector in 0cfffc.
+// Reset resets the processor. Moves the program counter to the vector in 0xfffc (24T8 or 0xffffc )
 func (s *State) Reset() {
-	startAddress := getWord(s.mem, vectorReset)
+	var startAddress uint32
+
+	// 24T8 uses 3-byte RST/IRQ/NMI vectors
+	switch (s.abMaxWidth) {
+		case AB24:
+fmt.Printf("RESET to AB24")
+			s.abWidth = s.abMaxWidth
+			startAddress = get24Bits(s.mem, vector24Reset)
+		default:
+			startAddress = uint32(getWord(s.mem, vectorReset))
+	}
 	s.cycles += 6
 	s.reg.setPC(startAddress)
 }
@@ -129,7 +159,7 @@ func (s *State) SetMemory(mem Memory) {
 }
 
 // GetPCAndSP returns the current program counter and stack pointer. Used to trace MLI calls
-func (s *State) GetPCAndSP() (uint16, uint8) {
+func (s *State) GetPCAndSP() (uint32, uint8) {
 	return s.reg.getPC(), s.reg.getSP()
 }
 
@@ -152,7 +182,7 @@ func (s *State) SetAXYP(regA uint8, regX uint8, regY uint8, regP uint8) {
 }
 
 // SetPC changes the program counter, as a JMP instruction
-func (s *State) SetPC(pc uint16) {
+func (s *State) SetPC(pc uint32) {
 	s.reg.setPC(pc)
 }
 

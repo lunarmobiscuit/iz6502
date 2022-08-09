@@ -26,8 +26,12 @@ const (
 	modeZeroPageAndRelative
 )
 
-func getWordInLine(line []uint8) uint16 {
-	return uint16(line[1]) + 0x100*uint16(line[2])
+func getWordInLine(line []uint8) uint32 {
+	return uint32(line[1]) | (uint32(line[2]) << 8)
+}
+
+func get24BitsInLine(line []uint8) uint32 {
+	return uint32(line[1]) | (uint32(line[2]) << 8) | (uint32(line[2]) << 16)
 }
 
 func resolveValue(s *State, line []uint8, opcode opcode) uint8 {
@@ -71,54 +75,117 @@ func resolveSetValue(s *State, line []uint8, opcode opcode, value uint8) {
 	}
 }
 
-func resolveAddress(s *State, line []uint8, opcode opcode) uint16 {
-	var address uint16
+func resolveAddress(s *State, line []uint8, opcode opcode) uint32 {
+	var address uint32
 	extraCycle := false
 
 	switch opcode.addressMode {
 	case modeZeroPage:
-		address = uint16(line[1])
+		address = uint32(line[1])
 	case modeZeroPageX:
-		address = uint16(line[1] + s.reg.getX())
+		address = uint32(line[1] + s.reg.getX())
 	case modeZeroPageY:
-		address = uint16(line[1] + s.reg.getY())
+		address = uint32(line[1] + s.reg.getY())
 	case modeAbsolute:
 		address = getWordInLine(line)
 	case modeAbsoluteX65c02:
 		fallthrough
 	case modeAbsoluteX:
-		base := getWordInLine(line)
-		address, extraCycle = addOffset(base, s.reg.getX())
+		switch s.abWidth {
+			case AB24:
+				base := get24BitsInLine(line)
+				address, extraCycle = addOffset(s, base, s.reg.getX())
+			default:
+				base := getWordInLine(line)
+				address, extraCycle = addOffset(s, base, s.reg.getX())
+		}
 	case modeAbsoluteY:
-		base := getWordInLine(line)
-		address, extraCycle = addOffset(base, s.reg.getY())
+		switch s.abWidth {
+			case AB24:
+				base := get24BitsInLine(line)
+				address, extraCycle = addOffset(s, base, s.reg.getY())
+			default:
+				base := getWordInLine(line)
+				address, extraCycle = addOffset(s, base, s.reg.getY())
+		}
 	case modeIndexedIndirectX:
-		addressAddress := line[1] + s.reg.getX()
-		address = getZeroPageWord(s.mem, addressAddress)
+		switch s.abWidth {
+			case AB24:
+				addressAddress := uint32(line[1] + s.reg.getX())
+				address = uint32(getZeroPage24Bits(s.mem, addressAddress))
+			default:
+				addressAddress := uint32(line[1] + s.reg.getX())
+				// 24T8 BACKWARD COMPATIBILITY - in 16-bit mode (zp,X) wraps within 64K
+				for addressAddress > 0x0ffff {
+					addressAddress -= 0x10000
+				}
+				address = uint32(getZeroPageWord(s.mem, addressAddress))
+		}
 	case modeIndirect:
-		addressAddress := getWordInLine(line)
-		address = getWordNoCrossPage(s.mem, addressAddress)
+		switch s.abWidth {
+			case AB24:
+				addressAddress := get24BitsInLine(line)
+				address = get24Bits(s.mem, addressAddress)
+			default:
+				addressAddress := uint32(getWordInLine(line))
+				// 24T8 BACKWARD COMPATIBILITY - in 16-bit mode (aaaa) wraps within 64K
+				for addressAddress > 0x0ffff {
+					addressAddress -= 0x10000
+				}
+				address = uint32(getWordNoCrossPage(s.mem, addressAddress))
+		}
 	case modeIndirect65c02Fix:
-		addressAddress := getWordInLine(line)
-		address = getWord(s.mem, addressAddress)
+		switch s.abWidth {
+			case AB24:
+				addressAddress := get24BitsInLine(line)
+				address = get24Bits(s.mem, addressAddress)
+			default:
+				addressAddress := uint32(getWordInLine(line))
+				address = uint32(getWord(s.mem, addressAddress))
+				// 24T8 BACKWARD COMPATIBILITY - in 16-bit mode (aaaa) wraps within 64K
+				for addressAddress > 0x0ffff {
+					addressAddress -= 0x10000
+				}
+		}
 	case modeIndirectIndexedY:
-		base := getZeroPageWord(s.mem, line[1])
-		address, extraCycle = addOffset(base, s.reg.getY())
+		switch s.abWidth {
+			case AB24:
+				base := uint32(getZeroPage24Bits(s.mem, uint32(line[1])))
+				address, extraCycle = addOffset(s, base, s.reg.getY())
+			default:
+				base := uint32(getZeroPageWord(s.mem, uint32(line[1])))
+				address, extraCycle = addOffset(s, base, s.reg.getY())
+		}
 	// 65c02 additions
 	case modeIndirectZeroPage:
-		address = getZeroPageWord(s.mem, line[1])
+		address = uint32(getZeroPageWord(s.mem, uint32(line[1])))
 	case modeAbsoluteIndexedIndirectX:
-		addressAddress := getWordInLine(line) + uint16(s.reg.getX())
-		address = getWord(s.mem, addressAddress)
+		switch s.abWidth {
+			case AB24:
+				addressAddress := get24BitsInLine(line) + uint32(s.reg.getX())
+				address = get24Bits(s.mem, addressAddress)
+			default:
+				addressAddress := getWordInLine(line) + uint32(s.reg.getX())
+				// 24T8 BACKWARD COMPATIBILITY - in 16-bit mode (aaaa,x) wraps within 64K
+				for addressAddress > 0x0ffff {
+					addressAddress -= 0x10000
+				}
+				address = uint32(getWord(s.mem, addressAddress))
+		}
 	case modeRelative:
 		// This assumes that PC is already pointing to the next instruction
 		base := s.reg.getPC()
-		address, extraCycle = addOffsetRelative(base, line[1])
+		switch s.abWidth {
+			case AB24:
+				address, extraCycle = addOffsetRelative16(s, base, getWordInLine(line))
+			default:
+				address, extraCycle = addOffsetRelative(s, base, line[1])
+		}
 	case modeZeroPageAndRelative:
 		// Two addressing modes combined. We refer to the second one, relative,
 		// placed one byte after the zeropage reference
 		base := s.reg.getPC()
-		address, _ = addOffsetRelative(base, line[2])
+		address, _ = addOffsetRelative(s, base, line[2])
 	default:
 		panic("Assert failed. Missing addressing mode")
 	}
@@ -145,22 +212,51 @@ that the MSB addition won't change. If it does we spend this extra cycle.
 
 Note that for writes we don't add a cycle in this case. There is no
 optimization that could make a double write. The regular cycle count
-is alwaus the same with no optimization.
+is always the same with no optimization.
 */
-func addOffset(base uint16, offset uint8) (uint16, bool) {
-	dest := base + uint16(offset)
-	if (base & 0xff00) != (dest & 0xff00) {
-		return dest, true
+func addOffset(s *State, base uint32, offset uint8) (uint32, bool) {
+	dest := base + uint32(offset)
+	switch s.abWidth {
+		case AB24:
+			// 24-bit addressing leaves the address as-is
+		default:
+			// 24T8 BACKWARD COMPATIBILITY - in 16-bit mode offsets wrap within 64K
+			for dest > 0x0ffff {
+				dest -= 0x10000
+			}
 	}
-	return dest, false
+	if (base & 0x00ff00) != (dest & 0x00ff00) {
+		return dest, true
+	} else {
+		return dest, false
+	}
 }
 
-func addOffsetRelative(base uint16, offset uint8) (uint16, bool) {
-	dest := base + uint16(int8(offset))
+func addOffsetRelative(s *State, base uint32, offset uint8) (uint32, bool) {
+	dest := base + uint32(int8(offset))
+	switch s.abWidth {
+		case AB24:
+			// 24-bit addressing leaves the address as-is
+		default:
+			// 24T8 BACKWARD COMPATIBILITY - in 16-bit mode offsets wrap within 64K
+			for dest > 0x0ffff {
+				dest -= 0x10000
+			}
+	}
 	if (base & 0xff00) != (dest & 0xff00) {
 		return dest, true
+	} else {
+		return dest, false
 	}
-	return dest, false
+}
+
+func addOffsetRelative16(s *State, base uint32, offset uint32) (uint32, bool) {
+	dest := base + uint32(int16(offset))
+	if (base & 0xff00) != (dest & 0xff00) {
+		return dest, true
+	} else {
+		return dest, false
+	}
 }
 
 func lineString(line []uint8, opcode opcode) string {

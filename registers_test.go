@@ -12,7 +12,7 @@ func TestRegA(t *testing.T) {
 }
 func TestRegPC(t *testing.T) {
 	var r registers
-	data := uint16(0xc600)
+	data := uint32(0xc600)
 	r.setPC(data)
 	if r.getPC() != data {
 		t.Error("Error storing and loading PC")

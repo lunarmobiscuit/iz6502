@@ -1,14 +1,13 @@
-# iz6502 - 6502 and 65c02 emulator in Go
-[![Go Reference](https://pkg.go.dev/badge/github.com/ivanizag/iz6502.svg)](https://pkg.go.dev/github.com/ivanizag/iz6502)
+# iz6502 - 6502 and 65c02 and 65c24T8 emulator in Go
+[![Go Reference](https://pkg.go.dev/badge/github.com/lunarmobiscuit/iz6502.svg)](https://pkg.go.dev/github.com/lunarmobiscuit/iz6502)
 
-6502 and 65c02 emulator library for Go. 
+6502 and 65c02 emulator library for Go, extended to support the mythical 65c24T8
 
 It is being used in:
 
-- Apple II emulator [izapple2](https://github.com/ivanizag/izapple2)
-- Acorn MOS execution environment [bbz](https://github.com/ivanizag/bbz)
+- Apple II emulator [izapple2](https://github.com/lunarmobiscuit/izapple2)
 
-See the library documentation in [pkg.go.dev](https://pkg.go.dev/github.com/ivanizag/iz6502#section-documentation)
+See the library documentation in [pkg.go.dev](https://pkg.go.dev/github.com/lunarmobiscuit/iz6502#section-documentation)
 
 ## Example
 
@@ -16,7 +15,7 @@ See the library documentation in [pkg.go.dev](https://pkg.go.dev/github.com/ivan
 package main
 
 import (
-	"github.com/ivanizag/iz6502"
+	"github.com/lunarmobiscuit/iz6502"
 )
 
 func main() {

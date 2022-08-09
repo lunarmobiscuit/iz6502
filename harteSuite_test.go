@@ -21,11 +21,13 @@ import (
 	"testing"
 )
 
-var ProcessorTestsEnable = false
-var ProcessorTestsPath = "/home/casa/code/ProcessorTests/"
+var ProcessorTestsNMOSEnable = false
+var ProcessorTestsCMOSEnable = false
+var ProcessorTests24T8Enable = false
+var ProcessorTestsPath = "../ProcessorTests/"
 
 type scenarioState struct {
-	Pc  uint16
+	Pc  uint32
 	S   uint8
 	A   uint8
 	X   uint8
@@ -42,8 +44,8 @@ type scenario struct {
 }
 
 func TestHarteNMOS6502(t *testing.T) {
-	if !ProcessorTestsEnable {
-		t.Skip("TomHarte/ProcessorTests are not enabled")
+	if !ProcessorTestsNMOSEnable {
+		t.Skip("TomHarte/ProcessorTests are not enabled for NMOS6502")
 	}
 
 	s := NewNMOS6502(nil) // Use to get the opcodes names
@@ -69,8 +71,8 @@ func TestHarteNMOS6502(t *testing.T) {
 }
 
 func TestHarteCMOS65c02(t *testing.T) {
-	if !ProcessorTestsEnable {
-		t.Skip("TomHarte/ProcessorTests are not enabled")
+	if !ProcessorTestsCMOSEnable {
+		t.Skip("TomHarte/ProcessorTests are not enabled for CMOS65c02")
 	}
 
 	s := NewCMOS65c02(nil) // Use to get the opcodes names
@@ -88,10 +90,32 @@ func TestHarteCMOS65c02(t *testing.T) {
 	}
 }
 
+func TestHarteMythical65c24T8(t *testing.T) {
+	if !ProcessorTests24T8Enable {
+		t.Skip("TomHarte/ProcessorTests are not enabled for 65C24T8")
+	}
+
+	s := NewMythical65c24T8(nil) // Use to get the opcodes names
+
+	path := ProcessorTestsPath + "65C24T8/v1/"
+	for i := 0x00; i <= 0xff; i++ {
+		mnemonic := s.opcodes[i].name
+		if mnemonic != "" { // Note 2
+			opcode := fmt.Sprintf("%02x", i)
+			t.Run(opcode+mnemonic, func(t *testing.T) {
+				t.Parallel()
+				m := new(FlatMemory)
+				s := NewMythical65c24T8(m)
+				testOpcode(t, s, path, opcode, mnemonic)
+			})
+		}
+	}
+}
+
 func testOpcode(t *testing.T, s *State, path string, opcode string, mnemonic string) {
 	data, err := ioutil.ReadFile(path + opcode + ".json")
 	if err != nil {
-		t.Fatal(err)
+		return // skip files that don't exist
 	}
 
 	if len(data) == 0 {
@@ -124,7 +148,7 @@ func testScenario(t *testing.T, s *State, sc *scenario, mnemonic string) {
 	s.reg.setP(sc.Initial.P)
 
 	for _, e := range sc.Initial.Ram {
-		s.mem.Poke(uint16(e[0]), uint8(e[1]))
+		s.mem.Poke(uint32(e[0]), uint8(e[1]))
 	}
 
 	// Execute instruction
@@ -141,7 +165,7 @@ func testScenario(t *testing.T, s *State, sc *scenario, mnemonic string) {
 		assertFlags(t, sc, sc.Initial.P, s.reg.getP(), sc.Final.P)
 	}
 	assertReg8(t, sc, "SP", s.reg.getSP(), sc.Final.S)
-	assertReg16(t, sc, "PC", s.reg.getPC(), sc.Final.Pc)
+	assertReg32(t, sc, "PC", s.reg.getPC(), sc.Final.Pc)
 
 	cycles := s.GetCycles() - start
 	if cycles != uint64(len(sc.Cycles)) {
@@ -161,8 +185,25 @@ func assertReg16(t *testing.T, sc *scenario, name string, actual uint16, wanted 
 	}
 }
 
+func assertReg32(t *testing.T, sc *scenario, name string, actual uint32, wanted uint32) {
+	if actual != wanted {
+		t.Errorf("Register %s is $%04x and should be $%04x for %+v", name, actual, wanted, sc)
+	}
+}
+
 func assertFlags(t *testing.T, sc *scenario, initial uint8, actual uint8, wanted uint8) {
 	if actual != wanted {
 		t.Errorf("%08b flag diffs, they are %08b and should be %08b, initial %08b for %+v", actual^wanted, actual, wanted, initial, sc)
 	}
+}
+
+func (s scenario) String() string {
+	var ram string
+	for r := range s.Initial.Ram {
+		ram += fmt.Sprintf("[%x: %x]", s.Initial.Ram[r][0], s.Initial.Ram[r][1])
+
+	}
+	return fmt.Sprintf("Name:%s\n INITIAL PC:%x A:%x X:%x Y:%x S:%x P:%x\n FINAL PC:%x A:%x X:%x Y:%x S:%x P:%x\n RAM %s", s.Name,
+		s.Initial.Pc, s.Initial.A, s.Initial.X, s.Initial.Y, s.Initial.S, s.Initial.P,
+		s.Final.Pc, s.Final.A, s.Final.X, s.Final.Y, s.Final.S, s.Final.P, ram)
 }

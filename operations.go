@@ -88,7 +88,7 @@ func buildOpBranchOnBit(bit uint8, test bool) opFunc {
 		// Note that those operations have two addressing modes:
 		// one for the zero page value, another for the relative jump.
 		// We will have to resolve the first one here.
-		value := s.mem.Peek(uint16(line[1]))
+		value := s.mem.Peek(uint32(line[1]))
 		bitValue := ((value >> bit) & 1) == 1
 
 		if bitValue == test {
@@ -250,17 +250,17 @@ func opSBCAlt(s *State, line []uint8, opcode opcode) {
 	s.reg.updateFlagZN(s.reg.getA())
 }
 
-const stackAddress uint16 = 0x0100
+const stackAddress uint32 = 0x0100
 
 func pushByte(s *State, value uint8) {
-	adresss := stackAddress + uint16(s.reg.getSP())
+	adresss := stackAddress + uint32(s.reg.getSP())
 	s.mem.Poke(adresss, value)
 	s.reg.setSP(s.reg.getSP() - 1)
 }
 
 func pullByte(s *State) uint8 {
 	s.reg.setSP(s.reg.getSP() + 1)
-	adresss := stackAddress + uint16(s.reg.getSP())
+	adresss := stackAddress + uint32(s.reg.getSP())
 	return s.mem.Peek(adresss)
 }
 
@@ -305,11 +305,19 @@ func opJMP(s *State, line []uint8, opcode opcode) {
 func opNOP(s *State, line []uint8, opcode opcode) {}
 
 func opHALT(s *State, line []uint8, opcode opcode) {
-	s.reg.setPC(s.reg.getPC() - 1)
+	pc := s.reg.getPC()
+
+	// 24T8 BACKWARD COMPATIBILITY - when BRK at PC=$0000 roll back to $FFFF
+	if (s.abWidth == AB16) && (pc == 0x000000) {
+		pc = 0x00ffff;
+	} else {
+		pc -= 1
+	}
+	s.reg.setPC(pc)
 }
 
 func opJSR(s *State, line []uint8, opcode opcode) {
-	pushWord(s, s.reg.getPC()-1)
+	pushWord(s, uint16(s.reg.getPC()-1))
 	address := resolveAddress(s, line, opcode)
 	s.reg.setPC(address)
 }
@@ -317,18 +325,18 @@ func opJSR(s *State, line []uint8, opcode opcode) {
 func opRTI(s *State, line []uint8, opcode opcode) {
 	s.reg.setP(pullByte(s))
 	s.reg.updateFlag5B()
-	s.reg.setPC(pullWord(s))
+	s.reg.setPC(uint32(pullWord(s)))
 }
 
 func opRTS(s *State, line []uint8, opcode opcode) {
-	s.reg.setPC(pullWord(s) + 1)
+	s.reg.setPC(uint32(pullWord(s) + 1))
 }
 
 func opBRK(s *State, line []uint8, opcode opcode) {
-	pushWord(s, s.reg.getPC()+1)
+	pushWord(s, uint16(s.reg.getPC()+1))
 	pushByte(s, s.reg.getP()|(flagB+flag5))
 	s.reg.setFlag(flagI)
-	s.reg.setPC(getWord(s.mem, vectorBreak))
+	s.reg.setPC(uint32(getWord(s.mem, vectorBreak)))
 }
 
 func opBRKAlt(s *State, line []uint8, opcode opcode) {
@@ -343,4 +351,14 @@ func opBRKAlt(s *State, line []uint8, opcode opcode) {
 
 func opSTZ(s *State, line []uint8, opcode opcode) {
 	resolveSetValue(s, line, opcode, 0)
+}
+
+// New opcode in 65C24T8 to return capabilities of the CPU
+func opCPU(s *State, line []uint8, opcode opcode) {
+	s.reg.setA(AB24 | R24 | N_THREADS)
+}
+
+// New opcode in 65C24T8 to switch to 24-bit address mode
+func opA24(s *State, line []uint8, opcode opcode) {
+	s.abWidth = AB24;
 }
