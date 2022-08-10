@@ -25,7 +25,7 @@ func NewMythical65c24T8(m Memory) *State {
 	var s State
 	s.mem = m
 
-	s.abWidth = AB16
+	s.abWidth = AB24
 	s.abMaxWidth = AB24
 
 	var opcodes [256]opcode
@@ -48,4 +48,8 @@ var opcodes65c24T8Delta = [256]opcode{
 	// Functional difference
 	0x0F: {"CPU", 1, 2, false, modeImplicit, opCPU},
 	0x4F: {"A24", 1, 2, true, modeImplicit, opA24},
+	0x1F: {"R16", 1, 2, true, modeImplicit, opR16},
+	0x2F: {"R24", 1, 2, true, modeImplicit, opR24},
+	0x5F: {"W16", 1, 2, true, modeImplicit, opW16},
+	0x6F: {"W24", 1, 2, true, modeImplicit, opW24},
 }

@@ -12,7 +12,7 @@ import (
 // https://ia800509.us.archive.org/18/items/Programming_the_6502/Programming_the_6502.pdf
 
 const (
-	maxInstructionSize = 3
+	maxInstructionSize = 4
 )
 
 // State represents the state of the simulated device
@@ -24,9 +24,12 @@ type State struct {
 	mem    Memory
 	cycles uint64
 
+	// 24T8 state for current and maximum address and register widths
 	prefixCode	bool
 	abWidth 	uint8
 	abMaxWidth 	uint8
+	rWidth 		uint8
+	rMaxWidth 	uint8
 
 	extraCycleCrossingBoundaries bool
 	extraCycleBranchTaken        bool
@@ -97,7 +100,7 @@ func (s *State) ExecuteInstruction() {
 
 	if s.trace {
 		//fmt.Printf("%#06x %#02x\n", pc-uint32(opcode.bytes), opcodeID)
-		fmt.Printf("%#06x %-13s: ", pc-uint32(opcode.bytes), lineString(s.lineCache, opcode))
+		fmt.Printf("%#06x %-13s: ", pc-uint32(opcode.bytes), lineString(s, s.lineCache, opcode))
 	}
 	opcode.action(s, s.lineCache, opcode)
 	s.cycles += uint64(opcode.cycles)
@@ -128,7 +131,6 @@ func (s *State) Reset() {
 	// 24T8 uses 3-byte RST/IRQ/NMI vectors
 	switch (s.abMaxWidth) {
 		case AB24:
-fmt.Printf("RESET to AB24")
 			s.abWidth = s.abMaxWidth
 			startAddress = get24Bits(s.mem, vector24Reset)
 		default:
@@ -159,25 +161,25 @@ func (s *State) SetMemory(mem Memory) {
 }
 
 // GetPCAndSP returns the current program counter and stack pointer. Used to trace MLI calls
-func (s *State) GetPCAndSP() (uint32, uint8) {
-	return s.reg.getPC(), s.reg.getSP()
+func (s *State) GetPCAndSP() (uint32, uint32) {
+	return s.reg.getPC(), s.reg.getSP(s.rWidth)
 }
 
 // GetCarryAndAcc returns the value of the carry flag and the accumulator. Used to trace MLI calls
-func (s *State) GetCarryAndAcc() (bool, uint8) {
-	return s.reg.getFlag(flagC), s.reg.getA()
+func (s *State) GetCarryAndAcc() (bool, uint32) {
+	return s.reg.getFlag(flagC), s.reg.getA(s.rWidth)
 }
 
 // GetAXYP returns the value of the A, X, Y and P registers
-func (s *State) GetAXYP() (uint8, uint8, uint8, uint8) {
-	return s.reg.getA(), s.reg.getX(), s.reg.getY(), s.reg.getP()
+func (s *State) GetAXYP() (uint32, uint32, uint32, uint8) {
+	return s.reg.getA(s.rWidth), s.reg.getX(s.rWidth), s.reg.getY(s.rWidth), s.reg.getP()
 }
 
 // SetAXYP changes the value of the A, X, Y and P registers
-func (s *State) SetAXYP(regA uint8, regX uint8, regY uint8, regP uint8) {
-	s.reg.setA(regA)
-	s.reg.setX(regX)
-	s.reg.setY(regY)
+func (s *State) SetAXYP(regA uint32, regX uint32, regY uint32, regP uint8) {
+	s.reg.setA(s.rWidth, regA)
+	s.reg.setX(s.rWidth, regX)
+	s.reg.setY(s.rWidth, regY)
 	s.reg.setP(regP)
 }
 

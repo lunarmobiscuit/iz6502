@@ -2,3 +2,4 @@
 examples/simplest/simplest
 .DS_Store
 test.out
+extra.tests

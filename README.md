@@ -55,3 +55,10 @@ The emulation is instruction based and has been tested with:
 - [Tom Harte ProcessorTests](https://github.com/TomHarte/ProcessorTests) for 6502 and 65c02. Some flag N errors remain for ADC using binary coded decimal mode.
 
 
+## 24T8 Funcationality
+
+See https://github.com/lunarmobiscuit/verilog-65C2424-fsm and https://github.com/lunarmobiscuit/verilog-65C24T8-fsm for descriptions of the changes from the WDC65C02
+
+In short, this mythical variation of the 65xx CPU extends the address space to 24 bits, extends the registers to 8, 16, or 24 bits, and adds 8 copies of the registers to implement 8 threads with two-cycle context switches
+
+

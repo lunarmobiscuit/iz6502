@@ -96,7 +96,7 @@ func TestHarteMythical65c24T8(t *testing.T) {
 	}
 
 	s := NewMythical65c24T8(nil) // Use to get the opcodes names
-
+			
 	path := ProcessorTestsPath + "65C24T8/v1/"
 	for i := 0x00; i <= 0xff; i++ {
 		mnemonic := s.opcodes[i].name
@@ -106,6 +106,7 @@ func TestHarteMythical65c24T8(t *testing.T) {
 				t.Parallel()
 				m := new(FlatMemory)
 				s := NewMythical65c24T8(m)
+				s.abWidth = AB16 // need to start in 16-bit mode as only one opcode is run per test
 				testOpcode(t, s, path, opcode, mnemonic)
 			})
 		}
@@ -141,10 +142,10 @@ func testScenario(t *testing.T, s *State, sc *scenario, mnemonic string) {
 	// Setup CPU
 	start := s.GetCycles()
 	s.reg.setPC(sc.Initial.Pc)
-	s.reg.setSP(sc.Initial.S)
-	s.reg.setA(sc.Initial.A)
-	s.reg.setX(sc.Initial.X)
-	s.reg.setY(sc.Initial.Y)
+	s.reg.setSP(R08, uint32(sc.Initial.S))
+	s.reg.setA(R08, uint32(sc.Initial.A))
+	s.reg.setX(R08, uint32(sc.Initial.X))
+	s.reg.setY(R08, uint32(sc.Initial.Y))
 	s.reg.setP(sc.Initial.P)
 
 	for _, e := range sc.Initial.Ram {
@@ -155,16 +156,16 @@ func testScenario(t *testing.T, s *State, sc *scenario, mnemonic string) {
 	s.ExecuteInstruction()
 
 	// Check result
-	assertReg8(t, sc, "A", s.reg.getA(), sc.Final.A)
-	assertReg8(t, sc, "X", s.reg.getX(), sc.Final.X)
-	assertReg8(t, sc, "Y", s.reg.getY(), sc.Final.Y)
+	assertReg8(t, sc, "A", uint8(s.reg.getA(R08)), sc.Final.A)
+	assertReg8(t, sc, "X", uint8(s.reg.getX(R08)), sc.Final.X)
+	assertReg8(t, sc, "Y", uint8(s.reg.getY(R08)), sc.Final.Y)
 	if s.reg.getFlag(flagD) && (mnemonic == "ADC") {
 		// Note 3
 		assertFlags(t, sc, sc.Initial.P, s.reg.getP()&0x7f, sc.Final.P&0x7f)
 	} else {
 		assertFlags(t, sc, sc.Initial.P, s.reg.getP(), sc.Final.P)
 	}
-	assertReg8(t, sc, "SP", s.reg.getSP(), sc.Final.S)
+	assertReg8(t, sc, "SP", uint8(s.reg.getSP(R08)), sc.Final.S)
 	assertReg32(t, sc, "PC", s.reg.getPC(), sc.Final.Pc)
 
 	cycles := s.GetCycles() - start

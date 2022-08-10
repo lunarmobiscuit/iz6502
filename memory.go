@@ -51,16 +51,19 @@ type FlatMemory struct {
 
 // Peek returns the data on the given address
 func (m *FlatMemory) Peek(address uint32) uint8 {
+	if int(address) >= len(m.data) { return 0xff }
 	return m.data[address]
 }
 
 // PeekCode returns the data on the given address
 func (m *FlatMemory) PeekCode(address uint32) uint8 {
+	if int(address) >= len(m.data) { return 0xff }
 	return m.data[address]
 }
 
 // Poke sets the data at the given address
 func (m *FlatMemory) Poke(address uint32, value uint8) {
+	if int(address) >= len(m.data) { return }
 	m.data[address] = value
 }
 

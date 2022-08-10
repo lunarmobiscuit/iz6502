@@ -6,12 +6,9 @@ const (
 	regA    = 0
 	regX    = 1
 	regY    = 2
-	regP    = 3
-	regSP   = 4
-	regPC   = 5 // 3 bytes
-	regPC1  = 6
-	regPC2  = 7
+	regSP   = 3
 	regNone = -1
+	regP    = -2
 )
 
 const (
@@ -26,34 +23,52 @@ const (
 )
 
 type registers struct {
-	data [8]uint8
+	data [4]uint32
+	p uint8
+	pc uint32
 }
 
-func (r *registers) getRegister(i int) uint8 { return r.data[i] }
-
-func (r *registers) getA() uint8  { return r.data[regA] }
-func (r *registers) getX() uint8  { return r.data[regX] }
-func (r *registers) getY() uint8  { return r.data[regY] }
-func (r *registers) getP() uint8  { return r.data[regP] }
-func (r *registers) getSP() uint8 { return r.data[regSP] }
-
-func (r *registers) setRegister(i int, v uint8) {
-	r.data[i] = v
+func (r *registers) getRegister(width uint8, i int) uint32 {
+	if i == regP {
+		return uint32(r.p)
+	} else {
+		switch width {
+		case R24: return r.data[i] & 0x0FFFFFF;
+		case R16: return r.data[i] & 0x0FFFF;
+		default: return r.data[i] & 0x0FF;
+		}
+	}
 }
-func (r *registers) setA(v uint8)  { r.setRegister(regA, v) }
-func (r *registers) setX(v uint8)  { r.setRegister(regX, v) }
-func (r *registers) setY(v uint8)  { r.setRegister(regY, v) }
-func (r *registers) setP(v uint8)  { r.setRegister(regP, v) }
-func (r *registers) setSP(v uint8) { r.setRegister(regSP, v) }
+
+func (r *registers) getA(width uint8) uint32  { return r.getRegister(width, regA) }
+func (r *registers) getX(width uint8) uint32  { return r.getRegister(width, regX) }
+func (r *registers) getY(width uint8) uint32  { return r.getRegister(width, regY) }
+func (r *registers) getP() uint8  { return r.p }
+func (r *registers) getSP(width uint8) uint32  { return r.getRegister(width, regSP) }
+
+func (r *registers) setRegister(width uint8, i int, v uint32) {
+	if i == regP {
+		r.p = uint8(v)
+	} else {
+		switch width {
+		case R24: r.data[i] = v & 0x0FFFFFF
+		case R16: r.data[i] = v & 0x0FFFF
+		default: r.data[i] = v & 0x0FF
+		}
+	}
+}
+func (r *registers) setA(width uint8, v uint32)  { r.setRegister(width, regA, v) }
+func (r *registers) setX(width uint8, v uint32)  { r.setRegister(width, regX, v) }
+func (r *registers) setY(width uint8, v uint32)  { r.setRegister(width, regY, v) }
+func (r *registers) setP(v uint8)  { r.p = v }
+func (r *registers) setSP(width uint8, v uint32) { r.setRegister(width, regSP, v) }
 
 func (r *registers) getPC() uint32 {
-	return uint32(r.data[regPC2])<<16 | uint32(r.data[regPC1])<<8 | uint32(r.data[regPC])
+	return r.pc
 }
 
 func (r *registers) setPC(v uint32) {
-	r.data[regPC2] = uint8(v >> 16)
-	r.data[regPC1] = uint8(v >> 8)
-	r.data[regPC] = uint8(v)
+	r.pc = v & 0x00ffffff
 }
 
 func (r *registers) getFlagBit(i uint8) uint8 {
@@ -64,15 +79,15 @@ func (r *registers) getFlagBit(i uint8) uint8 {
 }
 
 func (r *registers) getFlag(i uint8) bool {
-	return (r.data[regP] & i) != 0
+	return (r.p & i) != 0
 }
 
 func (r *registers) setFlag(i uint8) {
-	r.data[regP] |= i
+	r.p |= i
 }
 
 func (r *registers) clearFlag(i uint8) {
-	r.data[regP] &^= i
+	r.p &^= i
 }
 
 func (r *registers) updateFlag(i uint8, v bool) {
@@ -83,9 +98,19 @@ func (r *registers) updateFlag(i uint8, v bool) {
 	}
 }
 
-func (r *registers) updateFlagZN(t uint8) {
+func (r *registers) updateFlagZN(width uint8, t uint32) {
+	switch width {
+	case R24:
+		t &= 0x0FFFFFF;
+		r.updateFlag(flagN, t >= (1<<23))
+	case R16:
+		t &= 0x0FFFF;
+		r.updateFlag(flagN, t >= (1<<15))
+	default:
+		t &= 0x0FF;
+		r.updateFlag(flagN, t >= (1<<7))
+	}
 	r.updateFlag(flagZ, t == 0)
-	r.updateFlag(flagN, t >= (1<<7))
 }
 
 func (r *registers) updateFlag5B() {
@@ -95,10 +120,10 @@ func (r *registers) updateFlag5B() {
 
 func (r registers) String() string {
 	//ch := (r.getA() & 0x3F) + 0x40
-	ch := (r.getA() & 0x7F)
+	ch := uint8(r.getA(R08)) & 0x7F
 	if ch < 0x20 {
 		ch += 0x40
 	}
-	return fmt.Sprintf("A: %#02x(%v), X: %#02x, Y: %#02x, SP: %#02x, PC: %#04x, P: %#02x, (NV-BDIZC): %08b",
-		r.getA(), string(ch), r.getX(), r.getY(), r.getSP(), r.getPC(), r.getP(), r.getP())
+	return fmt.Sprintf("A: %#06x(%v), X: %#06x, Y: %#06x, SP: %#06x, PC: %#06x, P: %#02x, (NV-BDIZC): %08b",
+		r.getA(R24), string(ch), r.getX(R24), r.getY(R24), r.getSP(R24), r.getPC(), r.getP(), r.getP())
 }

@@ -4,9 +4,9 @@ import "testing"
 
 func TestRegA(t *testing.T) {
 	var r registers
-	data := uint8(200)
-	r.setA(data)
-	if r.getA() != data {
+	data := uint32(200)
+	r.setA(R08, data)
+	if r.getA(R08) != data {
 		t.Error("Error storing and loading A")
 	}
 }
@@ -50,17 +50,17 @@ func TestFlags(t *testing.T) {
 
 func TestUpdateFlagZN(t *testing.T) {
 	var r registers
-	r.updateFlagZN(0)
+	r.updateFlagZN(R08, 0)
 	if r.getP() != flagZ {
 		t.Error("Error update flags ZN with 0")
 	}
 
-	r.updateFlagZN(0x10)
+	r.updateFlagZN(R08, 0x10)
 	if r.getP() != 0 {
 		t.Error("Error update flags ZN with 0x10")
 	}
 
-	r.updateFlagZN(0xF2)
+	r.updateFlagZN(R08, 0xF2)
 	if r.getP() != flagN {
 		t.Error("Error update flags ZN with 0xF2")
 	}
