@@ -2,8 +2,18 @@ package iz6502
 
 func buildOpTransfer(regSrc int, regDst int) opFunc {
 	return func(s *State, line []uint8, opcode opcode) {
-		value := s.reg.getRegister(s.rWidth, regSrc)
-		s.reg.setRegister(s.rWidth, regDst, value)
+		var value uint32
+		if regSrc == regSP {
+			value = s.reg.getSP(s.sWidth)
+			s.reg.setRegister(s.rWidth, regDst, value)
+		} else if regDst == regSP {
+			value = s.reg.getRegister(s.rWidth, regSrc)
+			s.reg.setSP(s.sWidth, value)
+		} else {
+			value = s.reg.getRegister(s.rWidth, regSrc)
+			s.reg.setRegister(s.rWidth, regDst, value)
+		}
+
 		if regDst != regSP {
 			s.reg.updateFlagZN(s.rWidth, value)
 		}
@@ -340,14 +350,14 @@ func opSBCAlt(s *State, line []uint8, opcode opcode) {
 const stackAddress uint32 = 0x0100
 
 func pushByte(s *State, value uint8) {
-	adresss := stackAddress + s.reg.getSP(s.rWidth)
+	adresss := stackAddress + s.reg.getSP(s.sWidth)
 	s.mem.Poke(adresss, value)
-	s.reg.setSP(s.rWidth, s.reg.getSP(s.rWidth) - 1)
+	s.reg.setSP(s.sWidth, s.reg.getSP(s.sWidth) - 1)
 }
 
 func pullByte(s *State) uint8 {
-	s.reg.setSP(s.rWidth, s.reg.getSP(s.rWidth) + 1)
-	adresss := stackAddress + uint32(s.reg.getSP(s.rWidth))
+	s.reg.setSP(s.sWidth, s.reg.getSP(s.sWidth) + 1)
+	adresss := stackAddress + s.reg.getSP(s.sWidth)
 	return s.mem.Peek(adresss)
 }
 
@@ -513,4 +523,9 @@ func opW16(s *State, line []uint8, opcode opcode) {
 func opW24(s *State, line []uint8, opcode opcode) {
 	s.abWidth = AB24;
 	s.rWidth = R24;
+}
+
+// New opcode in 65C24T8 to set the width of the stack register
+func opSWS(s *State, line []uint8, opcode opcode) {
+	s.sWidth = s.rWidth;
 }

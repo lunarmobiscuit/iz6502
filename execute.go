@@ -25,11 +25,12 @@ type State struct {
 	cycles uint64
 
 	// 24T8 state for current and maximum address and register widths
-	prefixCode	bool
+	wasPrefix	bool
 	abWidth 	uint8
 	abMaxWidth 	uint8
 	rWidth 		uint8
 	rMaxWidth 	uint8
+	sWidth 		uint8
 
 	extraCycleCrossingBoundaries bool
 	extraCycleBranchTaken        bool
@@ -65,13 +66,15 @@ func (s *State) executeLine(line []uint8) {
 	if opcode.cycles == 0 {
 		panic(fmt.Sprintf("Unknown opcode 0x%02x\n", line[0]))
 	}
-	opcode.action(s, line, opcode)
 
 	// 24T8 if the previous instruction is not a prefix code, switch back to 16/8 mode
-	s.prefixCode = opcode.isPrefix
-	if opcode.isPrefix == false {
+	if (s.wasPrefix == false) && (opcode.isPrefix == false)  {
 		s.abWidth = AB16;
+		s.rWidth = R08;
 	}
+	s.wasPrefix = opcode.isPrefix
+
+	opcode.action(s, line, opcode)
 }
 
 // ExecuteInstruction transforms the state given after a single instruction is executed.
@@ -84,10 +87,21 @@ func (s *State) ExecuteInstruction() {
 		panic(fmt.Sprintf("Unknown opcode 0x%02x\n", opcodeID))
 	}
 
+	// 24T8 if the previous instruction is not a prefix code, switch back to 16/8 mode
+	if (s.wasPrefix == false) && (opcode.isPrefix == false)  {
+		s.abWidth = AB16;
+		s.rWidth = R08;
+	}
+	s.wasPrefix = opcode.isPrefix
+
 	if s.lineCache == nil {
 		s.lineCache = make([]uint8, maxInstructionSize)
 	}
-	for i := uint16(0); i < opcode.bytes; i++ {
+	nBytes := opcode.bytes
+	if (nBytes >= 3) && (s.abWidth == AB24) {  // 24T8 - add one more byte when an opcode has an address
+		nBytes += 1
+	}
+	for i := uint16(0); i < nBytes; i++ {
 		s.lineCache[i] = s.mem.PeekCode(pc)
 		pc++
 
@@ -100,7 +114,7 @@ func (s *State) ExecuteInstruction() {
 
 	if s.trace {
 		//fmt.Printf("%#06x %#02x\n", pc-uint32(opcode.bytes), opcodeID)
-		fmt.Printf("%#06x %-13s: ", pc-uint32(opcode.bytes), lineString(s, s.lineCache, opcode))
+		fmt.Printf("%#06x %-13s: ", pc-uint32(nBytes), lineString(s, s.lineCache, opcode))
 	}
 	opcode.action(s, s.lineCache, opcode)
 	s.cycles += uint64(opcode.cycles)
@@ -162,7 +176,7 @@ func (s *State) SetMemory(mem Memory) {
 
 // GetPCAndSP returns the current program counter and stack pointer. Used to trace MLI calls
 func (s *State) GetPCAndSP() (uint32, uint32) {
-	return s.reg.getPC(), s.reg.getSP(s.rWidth)
+	return s.reg.getPC(), s.reg.getSP(s.sWidth)
 }
 
 // GetCarryAndAcc returns the value of the carry flag and the accumulator. Used to trace MLI calls

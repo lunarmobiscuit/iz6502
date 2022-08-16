@@ -44,6 +44,23 @@ func NewMythical65c24T8(m Memory) *State {
 	return &s
 }
 
+func (s *State) AddressWidth() uint8 {
+	return s.abWidth
+}
+
+func (s *State) AddressMaxWidth() uint8 {
+	return s.abMaxWidth
+}
+
+func (s *State) RegisterWidth() uint8 {
+	return s.rWidth
+}
+
+func (s *State) RegisterMaxWidth() uint8 {
+	return s.rMaxWidth
+}
+
+
 var opcodes65c24T8Delta = [256]opcode{
 	// Functional difference
 	0x0F: {"CPU", 1, 2, false, modeImplicit, opCPU},
@@ -52,4 +69,5 @@ var opcodes65c24T8Delta = [256]opcode{
 	0x2F: {"R24", 1, 2, true, modeImplicit, opR24},
 	0x5F: {"W16", 1, 2, true, modeImplicit, opW16},
 	0x6F: {"W24", 1, 2, true, modeImplicit, opW24},
+	0xFC: {"SWS", 1, 2, false, modeImplicit, opSWS},
 }

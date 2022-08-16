@@ -31,7 +31,7 @@ func getWordInLine(line []uint8) uint32 {
 }
 
 func get24BitsInLine(line []uint8) uint32 {
-	return uint32(line[1]) | (uint32(line[2]) << 8) | (uint32(line[2]) << 16)
+	return uint32(line[1]) | (uint32(line[2]) << 8) | (uint32(line[3]) << 16)
 }
 
 func resolveValue(s *State, line []uint8, opcode opcode) uint32 {
@@ -111,7 +111,12 @@ func resolveAddress(s *State, line []uint8, opcode opcode) uint32 {
 	case modeZeroPageY:
 		address = (uint32(line[1]) + s.reg.getY(s.rWidth)) & 0x0FF
 	case modeAbsolute:
-		address = getWordInLine(line)
+		switch s.abWidth {
+		case AB24:
+			address = get24BitsInLine(line)
+		default:
+			address = getWordInLine(line)
+		}
 	case modeAbsoluteX65c02:
 		fallthrough
 	case modeAbsoluteX:
@@ -182,7 +187,12 @@ func resolveAddress(s *State, line []uint8, opcode opcode) uint32 {
 		}
 	// 65c02 additions
 	case modeIndirectZeroPage:
-		address = uint32(getZeroPageWord(s.mem, uint32(line[1])))
+		switch s.abWidth {
+			case AB24:
+				address = uint32(getZeroPage24Bits(s.mem, uint32(line[1])))
+			default:
+				address = uint32(getZeroPageWord(s.mem, uint32(line[1])))
+		}
 	case modeAbsoluteIndexedIndirectX:
 		switch s.abWidth {
 			case AB24:
@@ -263,8 +273,10 @@ func addOffsetRelative(s *State, base uint32, offset uint8) (uint32, bool) {
 			// 24-bit addressing leaves the address as-is
 		default:
 			// 24T8 BACKWARD COMPATIBILITY - in 16-bit mode offsets wrap within 64K
-			for dest > 0x0ffff {
-				dest -= 0x10000
+			if s.reg.pc < 0x0ffff { // but not if the PC is above 64K
+				for dest > 0x0ffff {
+					dest -= 0x10000
+				}
 			}
 	}
 	if (base & 0xff00) != (dest & 0xff00) {
