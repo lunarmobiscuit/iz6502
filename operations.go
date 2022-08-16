@@ -350,14 +350,24 @@ func opSBCAlt(s *State, line []uint8, opcode opcode) {
 const stackAddress uint32 = 0x0100
 
 func pushByte(s *State, value uint8) {
-	adresss := stackAddress + s.reg.getSP(s.sWidth)
+	var adresss uint32
+	if s.sWidth == R08 {
+		adresss = stackAddress + s.reg.getSP(s.sWidth)
+	} else {
+		adresss = s.reg.getSP(s.sWidth)
+	}
 	s.mem.Poke(adresss, value)
 	s.reg.setSP(s.sWidth, s.reg.getSP(s.sWidth) - 1)
 }
 
 func pullByte(s *State) uint8 {
 	s.reg.setSP(s.sWidth, s.reg.getSP(s.sWidth) + 1)
-	adresss := stackAddress + s.reg.getSP(s.sWidth)
+	var adresss uint32
+	if s.sWidth == R08 {
+		adresss = stackAddress + s.reg.getSP(s.sWidth)
+	} else {
+		adresss = s.reg.getSP(s.sWidth)
+	}
 	return s.mem.Peek(adresss)
 }
 
