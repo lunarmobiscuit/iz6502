@@ -70,4 +70,13 @@ var opcodes65c24T8Delta = [256]opcode{
 	0x5F: {"W16", 1, 2, true, modeImplicit, opW16},
 	0x6F: {"W24", 1, 2, true, modeImplicit, opW24},
 	0xFC: {"SWS", 1, 2, false, modeImplicit, opSWS},
+	0x0B: {"SR4", 1, 2, false, modeImplicit, opSR4},
+	0x1B: {"SL4", 1, 2, false, modeImplicit, opSL4},
+	0x2B: {"SR8", 1, 2, false, modeImplicit, opSR8},
+	0x3B: {"SL8", 1, 2, false, modeImplicit, opSL8},
+	0xBB: {"XSL", 1, 2, false, modeImplicit, opXSL},
+	0xCB: {"YSL", 1, 2, false, modeImplicit, opYSL},
+	0xDB: {"ADX", 1, 2, false, modeImplicit, opADX},
+	0xEB: {"ADY", 1, 2, false, modeImplicit, opADY},
+	0xFB: {"AXY", 1, 2, false, modeImplicit, opAXY},
 }

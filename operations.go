@@ -1,7 +1,5 @@
 package iz6502
 
-import "fmt"
-
 func buildOpTransfer(regSrc int, regDst int) opFunc {
 	return func(s *State, line []uint8, opcode opcode) {
 		var value uint32
@@ -539,6 +537,68 @@ func opW24(s *State, line []uint8, opcode opcode) {
 
 // New opcode in 65C24T8 to set the width of the stack register
 func opSWS(s *State, line []uint8, opcode opcode) {
-fmt.Printf("SWS %x\n", s.rWidth)
 	s.sWidth = s.rWidth;
+}
+
+// New opcode in 65C24T8 to shift A one nibble right
+func opSR4(s *State, line []uint8, opcode opcode) {
+	a := s.reg.getA(s.rWidth) >> 4
+	s.reg.setA(s.rWidth, a)
+	s.reg.updateFlagZN(s.rWidth, a)
+}
+
+// New opcode in 65C24T8 to shift A one nibble left
+func opSL4(s *State, line []uint8, opcode opcode) {
+	a := s.reg.getA(s.rWidth) << 4
+	s.reg.setA(s.rWidth, a)
+	s.reg.updateFlagZN(s.rWidth, a)
+}
+
+// New opcode in 65C24T8 to shift A one byte right
+func opSR8(s *State, line []uint8, opcode opcode) {
+	a := s.reg.getA(s.rWidth) >> 8
+	s.reg.setA(s.rWidth, a)
+	s.reg.updateFlagZN(s.rWidth, a)
+}
+
+// New opcode in 65C24T8 to shift A one byte right
+func opSL8(s *State, line []uint8, opcode opcode) {
+	a := s.reg.getA(s.rWidth) << 8
+	s.reg.setA(s.rWidth, a)
+	s.reg.updateFlagZN(s.rWidth, a)
+}
+
+// New opcode in 65C24T8 to shift X one bit left
+func opXSL(s *State, line []uint8, opcode opcode) {
+	x := s.reg.getX(s.rWidth) << 1
+	s.reg.setX(s.rWidth, x)
+	s.reg.updateFlagZN(s.rWidth, x)
+}
+
+// New opcode in 65C24T8 to shift A one bit left
+func opYSL(s *State, line []uint8, opcode opcode) {
+	y := s.reg.getY(s.rWidth) << 1
+	s.reg.setY(s.rWidth, y)
+	s.reg.updateFlagZN(s.rWidth, y)
+}
+
+// New opcode in 65C24T8 to add X to A
+func opADX(s *State, line []uint8, opcode opcode) {
+	a := s.reg.getA(s.rWidth) + s.reg.getX(s.rWidth)
+	s.reg.setA(s.rWidth, a)
+	s.reg.updateFlagZN(s.rWidth, a)
+}
+
+// New opcode in 65C24T8 to add Y to A
+func opADY(s *State, line []uint8, opcode opcode) {
+	a := s.reg.getA(s.rWidth) + s.reg.getY(s.rWidth)
+	s.reg.setA(s.rWidth, a)
+	s.reg.updateFlagZN(s.rWidth, a)
+}
+
+// New opcode in 65C24T8 to add X and Y and store the result in A
+func opAXY(s *State, line []uint8, opcode opcode) {
+	a := s.reg.getX(s.rWidth) + s.reg.getY(s.rWidth)
+	s.reg.setA(s.rWidth, a)
+	s.reg.updateFlagZN(s.rWidth, a)
 }
