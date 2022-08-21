@@ -1,5 +1,7 @@
 package iz6502
 
+import "fmt"
+
 func buildOpTransfer(regSrc int, regDst int) opFunc {
 	return func(s *State, line []uint8, opcode opcode) {
 		var value uint32
@@ -537,5 +539,6 @@ func opW24(s *State, line []uint8, opcode opcode) {
 
 // New opcode in 65C24T8 to set the width of the stack register
 func opSWS(s *State, line []uint8, opcode opcode) {
+fmt.Printf("SWS %x\n", s.rWidth)
 	s.sWidth = s.rWidth;
 }

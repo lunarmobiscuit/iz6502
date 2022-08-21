@@ -101,6 +101,12 @@ func (s *State) ExecuteInstruction() {
 	if (nBytes >= 3) && (s.abWidth == AB24) {  // 24T8 - add one more byte when an opcode has an address
 		nBytes += 1
 	}
+	if (opcode.addressMode == modeImmediate) && (s.rWidth != R08) {  // 24T8 - add more bytes for long immediates
+		switch s.rWidth {
+		case R16: nBytes += 1
+		case R24: nBytes += 2
+		}
+	}
 	for i := uint16(0); i < nBytes; i++ {
 		s.lineCache[i] = s.mem.PeekCode(pc)
 		pc++
