@@ -29,6 +29,7 @@ func NewMythical65c24T8(m Memory) *State {
 	s.abMaxWidth = AB24
 
 	var opcodes [256]opcode
+	add65c02NOPs(&opcodes)
 	for i := 0; i < 256; i++ {
 		opcodes[i] = opcodesNMOS6502[i]
 		rockwell := ((i & 0x07) == 0x07) || ((i & 0x0f) == 0x0f)
@@ -39,7 +40,6 @@ func NewMythical65c24T8(m Memory) *State {
 			opcodes[i] = opcodes65c24T8Delta[i]
 		}
 	}
-	add65c02NOPs(&opcodes)
 	s.opcodes = &opcodes
 	return &s
 }
