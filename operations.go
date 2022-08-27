@@ -540,16 +540,9 @@ func opSWS(s *State, line []uint8, opcode opcode) {
 	s.sWidth = s.rWidth;
 }
 
-// New opcode in 65C24T8 to shift A one nibble right
-func opSR4(s *State, line []uint8, opcode opcode) {
-	a := s.reg.getA(s.rWidth) >> 4
-	s.reg.setA(s.rWidth, a)
-	s.reg.updateFlagZN(s.rWidth, a)
-}
-
-// New opcode in 65C24T8 to shift A one nibble left
-func opSL4(s *State, line []uint8, opcode opcode) {
-	a := s.reg.getA(s.rWidth) << 4
+// New opcode in 65C24T8 to shift A one byte right
+func opSL8(s *State, line []uint8, opcode opcode) {
+	a := s.reg.getA(s.rWidth) << 8
 	s.reg.setA(s.rWidth, a)
 	s.reg.updateFlagZN(s.rWidth, a)
 }
@@ -557,13 +550,6 @@ func opSL4(s *State, line []uint8, opcode opcode) {
 // New opcode in 65C24T8 to shift A one byte right
 func opSR8(s *State, line []uint8, opcode opcode) {
 	a := s.reg.getA(s.rWidth) >> 8
-	s.reg.setA(s.rWidth, a)
-	s.reg.updateFlagZN(s.rWidth, a)
-}
-
-// New opcode in 65C24T8 to shift A one byte right
-func opSL8(s *State, line []uint8, opcode opcode) {
-	a := s.reg.getA(s.rWidth) << 8
 	s.reg.setA(s.rWidth, a)
 	s.reg.updateFlagZN(s.rWidth, a)
 }
