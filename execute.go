@@ -98,7 +98,8 @@ func (s *State) ExecuteInstruction() {
 		s.lineCache = make([]uint8, maxInstructionSize)
 	}
 	nBytes := opcode.bytes
-	if (nBytes >= 3) && (s.abWidth == AB24) {  // 24T8 - add one more byte when an opcode has an address
+	// 24T8 - add one more byte when an opcode has an address or a long branch
+	if (s.abWidth == AB24) && ((nBytes >= 3) || (opcode.addressMode == modeRelative)) {
 		nBytes += 1
 	}
 	if (opcode.addressMode == modeImmediate) && (s.rWidth != R08) {  // 24T8 - add more bytes for long immediates
