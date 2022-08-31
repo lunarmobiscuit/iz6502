@@ -62,6 +62,9 @@ func (s *State) RegisterMaxWidth() uint8 {
 
 
 var opcodes65c24T8Delta = [256]opcode{
+	// New address modes
+	0x5c: {"JSR", 3, 6, false, modeIndirect, opJSR},
+
 	// Functional difference
 	0x0F: {"CPU", 1, 2, false, modeImplicit, opCPU},
 	0x4F: {"A24", 1, 2, true, modeImplicit, opA24},
