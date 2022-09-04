@@ -295,6 +295,31 @@ func addOffsetRelative16(s *State, base uint32, offset uint32) (uint32, bool) {
 	}
 }
 
+func addressModeString(addressMode int) string {
+	switch (addressMode) {
+	case modeImplicit: return "modeImplicit"
+	case modeImplicitX: return "modeImplicitX"
+	case modeImplicitY: return "modeImplicitY"
+	case modeAccumulator: return "modeAccumulator"
+	case modeImmediate: return "modeImmediate"
+	case modeZeroPage: return "modeZeroPage"
+	case modeZeroPageX: return "modeZeroPageX"
+	case modeZeroPageY: return "modeZeroPageY"
+	case modeAbsolute: return "modeAbsolute"
+	case modeAbsoluteX: return "modeAbsoluteX"
+	case modeAbsoluteX65c02: return "modeAbsoluteX65c02"
+	case modeAbsoluteY: return "modeAbsoluteY"
+	case modeIndirect: return "modeIndirect"
+	case modeIndexedIndirectX: return "modeIndexedIndirectX"
+	case modeIndirectIndexedY: return "modeIndirectIndexedY"
+	case modeIndirect65c02Fix: return "modeIndirect65c02Fix"
+	case modeIndirectZeroPage: return "modeIndirectZeroPage"
+	case modeAbsoluteIndexedIndirectX: return "modeAbsoluteIndexedIndirectX"
+	case modeZeroPageAndRelative: return "modeZeroPageAndRelative"
+	default: return fmt.Sprintf("modeUnknown %d", addressMode)
+	}
+}
+
 func lineString(s *State, line []uint8, opcode opcode) string {
 	t := opcode.name
 	switch opcode.addressMode {
