@@ -33,7 +33,7 @@ func (r *registers) getRegister(width uint8, i int) uint32 {
 		return uint32(r.p)
 	} else {
 		switch width {
-		case R24: return r.data[i] & 0x0FFFFFF;
+		case R24, AB24: return r.data[i] & 0x0FFFFFF;
 		case R16: return r.data[i] & 0x0FFFF;
 		default: return r.data[i] & 0x0FF;
 		}
@@ -51,7 +51,7 @@ func (r *registers) setRegister(width uint8, i int, v uint32) {
 		r.p = uint8(v)
 	} else {
 		switch width {
-		case R24: r.data[i] = v & 0x0FFFFFF
+		case R24, AB24: r.data[i] = v & 0x0FFFFFF
 		case R16: r.data[i] = v & 0x0FFFF
 		default: r.data[i] = v & 0x0FF
 		}

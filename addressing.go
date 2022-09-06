@@ -107,9 +107,9 @@ func resolveAddress(s *State, line []uint8, opcode opcode) uint32 {
 	case modeZeroPage:
 		address = uint32(line[1])
 	case modeZeroPageX:
-		address = (uint32(line[1]) + s.reg.getX(s.rWidth)) & 0x0FF
+		address = (uint32(line[1]) + s.reg.getX(s.abWidth)) & 0x0FF
 	case modeZeroPageY:
-		address = (uint32(line[1]) + s.reg.getY(s.rWidth)) & 0x0FF
+		address = (uint32(line[1]) + s.reg.getY(s.abWidth)) & 0x0FF
 	case modeAbsolute:
 		switch s.abWidth {
 		case AB24:
@@ -123,27 +123,27 @@ func resolveAddress(s *State, line []uint8, opcode opcode) uint32 {
 		switch s.abWidth {
 		case AB24:
 			base := get24BitsInLine(line)
-			address, extraCycle = addOffset(s, base, s.reg.getX(s.rWidth))
+			address, extraCycle = addOffset(s, base, s.reg.getX(s.abWidth))
 		default:
 			base := getWordInLine(line)
-			address, extraCycle = addOffset(s, base, s.reg.getX(s.rWidth))
+			address, extraCycle = addOffset(s, base, s.reg.getX(s.abWidth))
 		}
 	case modeAbsoluteY:
 		switch s.abWidth {
 		case AB24:
 			base := get24BitsInLine(line)
-			address, extraCycle = addOffset(s, base, s.reg.getY(s.rWidth))
+			address, extraCycle = addOffset(s, base, s.reg.getY(s.abWidth))
 		default:
 			base := getWordInLine(line)
-			address, extraCycle = addOffset(s, base, s.reg.getY(s.rWidth))
+			address, extraCycle = addOffset(s, base, s.reg.getY(s.abWidth))
 		}
 	case modeIndexedIndirectX:
 		switch s.abWidth {
 		case AB24:
-			addressAddress := uint32(line[1]) + s.reg.getX(s.rWidth)
+			addressAddress := uint32(line[1]) + s.reg.getX(s.abWidth)
 			address = uint32(getZeroPage24Bits(s.mem, addressAddress))
 		default:
-			addressAddress := uint32(line[1]) + s.reg.getX(s.rWidth)
+			addressAddress := uint32(line[1]) + s.reg.getX(s.abWidth)
 			// 24T8 BACKWARD COMPATIBILITY - in 16-bit mode (zp,X) wraps within 64K
 			for addressAddress > 0x0ffff {
 				addressAddress -= 0x10000
@@ -180,10 +180,10 @@ func resolveAddress(s *State, line []uint8, opcode opcode) uint32 {
 		switch s.abWidth {
 			case AB24:
 				base := uint32(getZeroPage24Bits(s.mem, uint32(line[1])))
-				address, extraCycle = addOffset(s, base, s.reg.getY(s.rWidth))
+				address, extraCycle = addOffset(s, base, s.reg.getY(s.abWidth))
 			default:
 				base := uint32(getZeroPageWord(s.mem, uint32(line[1])))
-				address, extraCycle = addOffset(s, base, s.reg.getY(s.rWidth))
+				address, extraCycle = addOffset(s, base, s.reg.getY(s.abWidth))
 		}
 	// 65c02 additions
 	case modeIndirectZeroPage:
@@ -196,10 +196,10 @@ func resolveAddress(s *State, line []uint8, opcode opcode) uint32 {
 	case modeAbsoluteIndexedIndirectX:
 		switch s.abWidth {
 			case AB24:
-				addressAddress := get24BitsInLine(line) + s.reg.getX(s.rWidth)
+				addressAddress := get24BitsInLine(line) + s.reg.getX(s.abWidth)
 				address = get24Bits(s.mem, addressAddress)
 			default:
-				addressAddress := getWordInLine(line) + s.reg.getX(s.rWidth)
+				addressAddress := getWordInLine(line) + s.reg.getX(s.abWidth)
 				// 24T8 BACKWARD COMPATIBILITY - in 16-bit mode (aaaa,x) wraps within 64K
 				for addressAddress > 0x0ffff {
 					addressAddress -= 0x10000
@@ -332,9 +332,9 @@ func lineString(s *State, line []uint8, opcode opcode) string {
 	case modeImmediate:
 		switch s.rWidth {
 		case R24:
-			t += fmt.Sprintf(" #$%02x%02x%02x", line[1], line[2], line[3])
+			t += fmt.Sprintf(" #$%02x%02x%02x", line[3], line[2], line[1])
 		case R16:
-			t += fmt.Sprintf(" #$%02x%02x", line[1], line[2])
+			t += fmt.Sprintf(" #$%02x%02x", line[2], line[1])
 		default:
 			t += fmt.Sprintf(" #$%02x", line[1])
 		}

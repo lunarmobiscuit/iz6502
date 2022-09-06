@@ -511,15 +511,18 @@ func opCPU(s *State, line []uint8, opcode opcode) {
 // New opcode in 65C24T8 to switch to 24-bit address mode
 func opA24(s *State, line []uint8, opcode opcode) {
 	s.abWidth = AB24;
+	s.rWidth = R08;
 }
 
 // New opcode in 65C24T8 to switch to 16-bit register mode
 func opR16(s *State, line []uint8, opcode opcode) {
+	s.abWidth = AB16;
 	s.rWidth = R16;
 }
 
 // New opcode in 65C24T8 to switch to 24-bit register mode
 func opR24(s *State, line []uint8, opcode opcode) {
+	s.abWidth = AB16;
 	s.rWidth = R24;
 }
 

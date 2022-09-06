@@ -141,7 +141,7 @@ func (s *State) ExecuteInstruction() {
 	}
 
 	if s.trace {
-		fmt.Printf("%v, [%02x] <w%x>\n", s.reg, s.lineCache[0:opcode.bytes], s.abWidth)
+		fmt.Printf("%v, [%02x] <w%x/%x>\n", s.reg, s.lineCache[0:opcode.bytes], s.abWidth, s.rWidth)
 	}
 }
 
