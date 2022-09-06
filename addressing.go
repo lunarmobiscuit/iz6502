@@ -24,6 +24,10 @@ const (
 	modeIndirectZeroPage
 	modeAbsoluteIndexedIndirectX
 	modeZeroPageAndRelative
+	// Added on the 65c2402
+	modeXY
+	modeIndirectXY
+	modeIndexedIndirectXY
 )
 
 func getWordInLine(line []uint8) uint32 {
@@ -220,6 +224,30 @@ func resolveAddress(s *State, line []uint8, opcode opcode) uint32 {
 		// placed one byte after the zeropage reference
 		base := s.reg.getPC()
 		address, _ = addOffsetRelative(s, base, line[2])
+	// 65c2402 additions
+	case modeXY:
+		// The address is regX + regY
+		address = s.reg.getX(s.abWidth) + s.reg.getY(s.abWidth)
+		extraCycle = false
+	case modeIndirectXY:
+		// The address is (regX + regY)
+		addressAddress := s.reg.getX(s.abWidth) + s.reg.getY(s.abWidth)
+		switch s.abWidth {
+			case AB24:
+				address = get24Bits(s.mem, addressAddress)
+			default:
+				address = uint32(getWord(s.mem, addressAddress))
+		}
+		extraCycle = false
+	case modeIndexedIndirectXY:
+		// The address is (regX) + regY
+		switch s.abWidth {
+			case AB24:
+				address = get24Bits(s.mem, s.reg.getX(s.abWidth)) + s.reg.getY(s.abWidth)
+			default:
+				address = uint32(getWord(s.mem, s.reg.getX(s.abWidth))) + s.reg.getY(s.abWidth)
+		}
+		extraCycle = false
 	default:
 		panic("Assert failed. Missing addressing mode")
 	}
@@ -394,6 +422,12 @@ func lineString(s *State, line []uint8, opcode opcode) string {
 		}
 	case modeZeroPageAndRelative:
 		t += fmt.Sprintf(" $%02x %+x", line[1], int8(line[2]))
+	case modeXY:
+		t += fmt.Sprintf(" XY")
+	case modeIndirectXY:
+		t += fmt.Sprintf(" (XY)")
+	case modeIndexedIndirectXY:
+		t += fmt.Sprintf(" (X),Y")
 	default:
 		t += "UNKNOWN MODE"
 	}
