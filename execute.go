@@ -234,3 +234,8 @@ func (s *State) Load(r io.Reader) error {
 	}
 	return nil
 }
+
+// Exported view of the PC
+func (s *State) GetPC() uint32 {
+	return s.reg.getPC()
+}
